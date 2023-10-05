@@ -1,0 +1,119 @@
+% !TEX root = la.tex
+\documentclass[10pt]{beamer}
+\usepackage[utf8]{inputenc}
+
+\usepackage{multirow,rotating}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{tikz-cd}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{mathtools,nccmath}%
+\usepackage{etoolbox, xparse} 
+\usetheme{CambridgeUS}
+\usecolortheme{dolphin}
+
+% set colors
+\definecolor{myNewColorA}{RGB}{0, 24,150}
+\definecolor{myNewColorB}{RGB}{0, 24,150}
+\definecolor{myNewColorC}{RGB}{0, 24,150} % {130,138,143}
+\setbeamercolor*{palette primary}{bg=myNewColorC}
+\setbeamercolor*{palette secondary}{bg=myNewColorB, fg = white}
+\setbeamercolor*{palette tertiary}{bg=myNewColorA, fg = white}
+\setbeamercolor*{titlelike}{fg=myNewColorA}
+\setbeamercolor*{title}{bg=myNewColorA, fg = white}
+\setbeamercolor*{item}{fg=myNewColorA}
+\setbeamercolor*{caption name}{fg=myNewColorA}
+\usefonttheme{professionalfonts}
+\usepackage{natbib}
+\usepackage{hyperref}
+%------------------------------------------------------------
+
+\newcommand{\dfdh}{\frac{\partial f(\hat{h})}{\partial \hat{h_{i}}}}
+\newcommand{\dgdh}{\frac{\partial g(\hat{h})}{\partial \hat{h_{i}}}}
+\newcommand{\g}{\Sigma_{i}e^{h_{i}}}
+\newcommand{\f}{\hat{e^{h_{t}}}}
+\newcommand{\dghf}{\frac{\partial g(\hat{h})}{\partial h_{1}}}
+\newcommand{\dghs}{\frac{\partial g(\hat{h})}{\partial h_{2}}}
+\newcommand{\dght}{\frac{\partial g(\hat{h})}{\partial h_{3}}}
+\newcommand{\dfhf}{\frac{\partial f(\hat{h})}{\partial h_{1}}}
+\newcommand{\dfhs}{\frac{\partial f(\hat{h})}{\partial h_{2}}}
+\newcommand{\dfht}{\frac{\partial f(\hat{h})}{\partial h_{3}}}
+
+\setbeamerfont{title}{size=\large}
+\setbeamerfont{subtitle}{size=\small}
+\setbeamerfont{author}{size=\small}
+\setbeamerfont{date}{size=\footnotesize}
+\setbeamerfont{institute}{size=\footnotesize}
+\title[RNN]{LSTM}
+
+\begin{document}
+
+%------------------------------------------------------------
+\section{Optimiztion}
+
+\begin{frame}{LSTM (Cell) Architecture}
+    \begin{equation}
+        o_{t} = \sigma(x_{t}*U^{o} + h_{t-1}*W^{o}), 
+    \end{equation}
+    \begin{equation}
+        i_{t} = \sigma(x_{t}*U^{i} + h_{t-1}*W^{i}),
+    \end{equation}
+    \begin{equation}
+        f_{t} = \sigma(x_{t}*U^{f} + h_{t-1}*W^{f}),
+    \end{equation}
+    \begin{equation}
+        a_{t}  = \bar{c_{t}} = \tanh(x_{t}*U^{g} + h_{t-1}*W^{g}),
+    \end{equation}
+    \begin{equation}
+        c_{t} = f_{t} * c_{t-1} + i_{t} * \bar{c_{t}},  
+    \end{equation}
+    \begin{equation}
+        h_{t} = \tanh(c_{t}) * o_{t}.   
+    \end{equation}
+\end{frame}
+
+\begin{frame}{Loss of the Layer through Time}
+    Since we're operating (with $\partial$) on functions over the space $\mathbb{R}^{n}$ (this instance $n=3$) the composition operator 
+    for $f, g$ is not multiplication any more, 
+    i.e., we use the inner product of the vector space $\mathbb{R}^{3}$.
+    \begin{align}
+        p_{t} = \frac{\hat{e^{h}}}{\Sigma_{i}e^{h_{i}}} \text{, where } i\le dim(h_{t}) 
+        \text{, and } t \le window_{time},\\
+        \mathbf{L}(p_{t}) = -\ln(p_{t}),\\
+        \frac{d}{dx}\left(\frac{f(x)}{g(x)}\right) = \frac{f'(x)g(x) - f(x)g'(x)}{[g(x)]^2},\\
+        f(\hat{h}) = \f \text{, } \dfdh = e^{\hat{h_{i}}}\\
+        g(\hat{h}) = \g \text{, } \dgdh = e^{h_{i}}\\
+        g(\hat{h})^{2}   =  (e^{h_{1}}+e^{h_{2}}+e^{h_{3}})^{2}.
+    \end{align}
+
+\end{frame}
+
+\begin{frame}
+    \begin{align*}
+        \dfhf g(\hat{h}) - f(x) \dghf &= \hat{e^{h_{1}}}\times \Sigma_{i}e^{h_{i}} - \hat{e^{h}}\cdot e^{h_{1}}\\
+        &= [e^{h_{1}}, 0, 0]\times(e^{h_{1}}+e^{h_{2}}+e^{h_{3}}) -
+        [e^{h_{1}}, e^{h_{2}}, e^{h_{3}}] \cdot [e^{h_{1}}, 0, 0]\\
+        &= e^{2h_{1}} + e^{h_{1}}e^{h_{2}} + e^{h_{1}}e^{h_{3}} - e^{2h_{1}} \\
+        &= e^{h_{1}}e^{h_{2}} + e^{h_{1}}e^{h_{3}}.
+    \end{align*}
+    \begin{align*}
+        \frac{\partial p_{t}(\hat{h})}{\partial h_{1}} = 
+        \frac{e^{h_{1}}e^{h_{2}} + e^{h_{1}}e^{h_{3}}}{(e^{h_{1}}+e^{h_{2}}+e^{h_{3}})^{2}},\\
+        \frac{\partial \mathbf{L}(\hat{p_{t}})}{\partial h_{1}} = \frac{\partial \mathbf{L}(\hat{p_{t}})}{\partial \hat{p_{t}}}
+        \frac{\partial p_{t}(\hat{h})}{\partial h_{1}} = -\frac{1}{p_{t}}
+        \frac{e^{h_{1}}e^{h_{2}} + e^{h_{1}}e^{h_{3}}}{(e^{h_{1}}+e^{h_{2}}+e^{h_{3}})^{2}}.
+    \end{align*}
+\end{frame}
+
+\begin{frame}
+    \begin{align}
+        \frac{\partial p_{t}(\hat{h})}{\partial h_{1}} = \frac{e^{h_{1}}e^{h_{2}} + e^{h_{1}}e^{h_{3}}}{(e^{h_{1}}+e^{h_{2}}+e^{h_{3}})^{2}},\\
+        \frac{\partial p_{t}(\hat{h})}{\partial h_{2}} = \frac{e^{h_{2}}e^{h_{1}} + e^{h_{2}}e^{h_{3}}}{(e^{h_{1}}+e^{h_{2}}+e^{h_{3}})^{2}},\\
+        \frac{\partial p_{t}(\hat{h})}{\partial h_{3}} = \frac{e^{h_{3}}e^{h_{1}} + e^{h_{3}}e^{h_{2}}}{(e^{h_{1}}+e^{h_{2}}+e^{h_{3}})^{2}}.
+    \end{align}
+\end{frame}
+
+\end{document}
+
+
