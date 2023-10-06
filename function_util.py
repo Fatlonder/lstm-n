@@ -14,6 +14,7 @@ def tanh_prime(x):
   return 1-np.tanh(x)**2
 
 def dropout(lstm, params, is_feed_input, d_input):
+    # Copied from source [2]
     if params.dropout<1:
         if is_feed_input: #t>=srcMaxLen && ll==1 && params.feedInput % predict words
             d_input[1:2*params.lstmSize, :] = d_input[1:2*params.lstmSize, :]*lstm.dropoutMaskInput #dropout x_t, s_t
